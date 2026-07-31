@@ -1,0 +1,5 @@
+ultralytics
+numpy
+pandas
+tqdm
+nvidia-ml-py
