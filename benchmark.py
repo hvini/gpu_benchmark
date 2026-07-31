@@ -13,7 +13,7 @@ from tqdm import tqdm
 
 
 # ==========================================================
-# Configuration (change using docker -e)
+# Configuration
 # ==========================================================
 
 MODEL = os.getenv("MODEL", "yolo11s.pt")
@@ -30,15 +30,17 @@ RUNS = int(os.getenv("RUNS", "5"))
 
 
 # ==========================================================
-# Power monitoring
+# GPU Monitor (Power + Utilization)
 # ==========================================================
 
-class PowerMonitor:
+class GPUMonitor:
 
     def __init__(self, interval=0.1):
 
         self.interval = interval
+
         self.running = False
+
         self.samples = []
 
         pynvml.nvmlInit()
@@ -51,7 +53,8 @@ class PowerMonitor:
         self.running = True
 
         self.thread = threading.Thread(
-            target=self._sample
+            target=self._sample,
+            daemon=True
         )
 
         self.thread.start()
@@ -62,13 +65,43 @@ class PowerMonitor:
         while self.running:
 
             power = (
-                pynvml.nvmlDeviceGetPowerUsage(self.handle)
-                / 1000.0
+                pynvml.nvmlDeviceGetPowerUsage(
+                    self.handle
+                )
+                /
+                1000.0
             )
 
-            self.samples.append(power)
+
+            util = (
+                pynvml.nvmlDeviceGetUtilizationRates(
+                    self.handle
+                )
+            )
+
+
+            mem = (
+                pynvml.nvmlDeviceGetMemoryInfo(
+                    self.handle
+                )
+            )
+
+
+            self.samples.append({
+
+                "power":
+                    power,
+
+                "gpu_util":
+                    util.gpu,
+
+                "memory_MB":
+                    mem.used / 1024**2
+            })
+
 
             time.sleep(self.interval)
+
 
 
     def stop(self):
@@ -78,37 +111,64 @@ class PowerMonitor:
         self.thread.join()
 
 
+
     def get_results(self):
 
         if len(self.samples) == 0:
 
             return {
+
                 "avg_power_W": 0,
-                "max_power_W": 0
+                "max_power_W": 0,
+
+                "gpu_util_mean_pct": 0,
+                "gpu_util_max_pct": 0,
+
+                "gpu_memory_mean_MB": 0,
+                "gpu_memory_max_MB": 0
             }
+
+
+        power = [
+            x["power"]
+            for x in self.samples
+        ]
+
+
+        util = [
+            x["gpu_util"]
+            for x in self.samples
+        ]
+
+
+        memory = [
+            x["memory_MB"]
+            for x in self.samples
+        ]
 
 
         return {
 
             "avg_power_W":
-                np.mean(self.samples),
+                np.mean(power),
 
             "max_power_W":
-                np.max(self.samples)
+                np.max(power),
+
+
+            "gpu_util_mean_pct":
+                np.mean(util),
+
+            "gpu_util_max_pct":
+                np.max(util),
+
+
+            "gpu_memory_mean_MB":
+                np.mean(memory),
+
+            "gpu_memory_max_MB":
+                np.max(memory)
         }
-
-
-# ==========================================================
-# GPU information
-# ==========================================================
-
-def gpu_memory():
-
-    handle = pynvml.nvmlDeviceGetHandleByIndex(0)
-
-    mem = pynvml.nvmlDeviceGetMemoryInfo(handle)
-
-    return mem.used / 1024**2
 
 
 
@@ -126,14 +186,17 @@ print("Precision:", PRECISION)
 print("Runs:", RUNS)
 print("Iterations:", ITERATIONS)
 
-
 print()
 
-print("CUDA available:",
-      torch.cuda.is_available())
+print(
+    "CUDA available:",
+    torch.cuda.is_available()
+)
 
-print("GPU:",
-      torch.cuda.get_device_name(0))
+print(
+    "GPU:",
+    torch.cuda.get_device_name(0)
+)
 
 
 torch.backends.cudnn.benchmark = True
@@ -163,6 +226,7 @@ else:
     )
 
 
+
 dummy = np.random.randint(
     0,
     255,
@@ -181,6 +245,7 @@ dummy = np.random.randint(
 # ==========================================================
 
 print("\nWarmup...")
+
 
 with torch.inference_mode():
 
@@ -205,14 +270,17 @@ torch.cuda.synchronize()
 all_results = []
 
 
-power_monitor = PowerMonitor()
+gpu_monitor = GPUMonitor()
 
-power_monitor.start()
+gpu_monitor.start()
+
 
 
 for run in range(RUNS):
 
-    print(f"\nRun {run+1}/{RUNS}")
+    print(
+        f"\nRun {run+1}/{RUNS}"
+    )
 
 
     times = []
@@ -254,12 +322,15 @@ for run in range(RUNS):
             )
 
 
+
     times = np.array(times)
+
 
 
     all_results.append({
 
-        "run": run + 1,
+        "run":
+            run + 1,
 
         "fps":
             1000 / np.mean(times),
@@ -270,93 +341,107 @@ for run in range(RUNS):
         "latency_std_ms":
             np.std(times),
 
-        "p50_latency_ms":
-            np.percentile(times, 50),
-
         "p95_latency_ms":
-            np.percentile(times, 95),
+            np.percentile(times,95),
 
         "p99_latency_ms":
-            np.percentile(times, 99)
+            np.percentile(times,99)
 
     })
 
 
 
-power_monitor.stop()
+gpu_monitor.stop()
 
 
-runs_df = pd.DataFrame(all_results)
+
+runs_df = pd.DataFrame(
+    all_results
+)
 
 
 
 # ==========================================================
-# Final result
+# Final Result
 # ==========================================================
 
-power = power_monitor.get_results()
+gpu_metrics = gpu_monitor.get_results()
+
 
 
 result = {
 
+
     "gpu":
         torch.cuda.get_device_name(0),
+
 
     "model":
         MODEL,
 
+
     "resolution":
         IMAGE_SIZE,
+
 
     "precision":
         PRECISION,
 
+
     "runs":
         RUNS,
+
 
     "iterations":
         ITERATIONS,
 
 
+
     "fps_mean":
         runs_df["fps"].mean(),
+
 
     "fps_std":
         runs_df["fps"].std(),
 
 
+
     "latency_mean_ms":
         runs_df["latency_mean_ms"].mean(),
+
 
     "latency_std_ms":
         runs_df["latency_std_ms"].mean(),
 
+
+
     "p95_latency_ms":
         runs_df["p95_latency_ms"].mean(),
+
 
     "p99_latency_ms":
         runs_df["p99_latency_ms"].mean(),
 
 
-    "gpu_memory_MB":
-        gpu_memory(),
-
 
     "python":
         platform.python_version(),
 
+
     "torch":
         torch.__version__,
 
+
     "cuda":
         torch.version.cuda
+
 }
 
 
-result.update(power)
+
+result.update(gpu_metrics)
 
 
-# FPS per watt
 
 if result["avg_power_W"] > 0:
 
@@ -383,24 +468,39 @@ print(
 )
 
 
+
 output_dir = os.getenv(
     "OUTPUT_DIR",
     "/workspace/results"
 )
 
 
-filename = (
-    f"{result['gpu'].replace(' ', '_')}_"
-    f"{MODEL.replace('.pt','')}_"
-    f"{PRECISION}_"
-    f"{IMAGE_SIZE}.csv"
+os.makedirs(
+    output_dir,
+    exist_ok=True
 )
+
+
+
+filename = (
+
+    f"{result['gpu'].replace(' ','_')}_"
+
+    f"{MODEL.replace('.pt','')}_"
+
+    f"{PRECISION}_"
+
+    f"{IMAGE_SIZE}.csv"
+
+)
+
 
 
 output_path = os.path.join(
     output_dir,
     filename
 )
+
 
 
 pd.DataFrame([result]).to_csv(

@@ -1,2 +1,3 @@
-results/
 yolo11s.pt
+venv/
+plots/

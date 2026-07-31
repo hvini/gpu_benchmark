@@ -1,0 +1,68 @@
+wget https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo11s.pt
+
+=============
+
+5090: PyTorch 2.11.0 + CUDA 12.8
+others: PyTorch 2.5.1 + CUDA 12.4
+
+=============
+
+FROM nvidia/cuda:12.8.1-cudnn-runtime-ubuntu22.04
+pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
+
+=============
+
+3. Exploratory analysis
+
+Generate tables like:
+
+FPS
+GPU	640	1280	1920
+Latency
+
+| GPU |640|1280|1920|
+
+Power
+
+| GPU |640|1280|1920|
+
+FPS/W
+
+| GPU |640|1280|1920|
+
+GPU utilization
+
+| GPU |640|1280|1920|
+
+GPU memory
+
+| GPU |640|1280|1920|
+
+These tables make it easy to inspect trends before plotting.
+
+4. Produce the figures
+
+I would generate approximately these plots:
+
+Performance
+FPS vs Resolution
+Latency vs Resolution
+Energy
+Power vs Resolution
+FPS/W vs Resolution
+Hardware usage
+GPU utilization vs Resolution
+GPU memory vs Resolution
+Scaling
+
+Normalize FPS to the 4060 Ti or to each GPU's 640-resolution result to show scaling behavior.
+
+5. Statistical analysis
+
+Since you have 5 runs per configuration, calculate:
+
+mean (already done)
+standard deviation (already done)
+coefficient of variation (CV = std/mean × 100%)
+
+This lets you demonstrate that measurements are stable. A low CV (often below 2–3%) indicates consistent results.
