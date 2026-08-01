@@ -2,7 +2,9 @@ import os
 import time
 import threading
 import platform
+import urllib.request
 
+import cv2
 import torch
 import numpy as np
 import pandas as pd
@@ -227,16 +229,19 @@ else:
 
 
 
-dummy = np.random.randint(
-    0,
-    255,
-    (
-        IMAGE_SIZE,
-        IMAGE_SIZE,
-        3
-    ),
-    dtype=np.uint8
-)
+IMAGE_PATH = "data/road_image.jpg"
+IMAGE_URL = "https://raw.githubusercontent.com/ultralytics/yolov5/master/data/images/bus.jpg"
+
+if not os.path.exists(IMAGE_PATH):
+    print(f"\nDownloading real road image from {IMAGE_URL}...")
+    os.makedirs(os.path.dirname(IMAGE_PATH), exist_ok=True)
+    urllib.request.urlretrieve(IMAGE_URL, IMAGE_PATH)
+
+img = cv2.imread(IMAGE_PATH)
+if img is None:
+    raise ValueError(f"Failed to load image at {IMAGE_PATH}")
+
+dummy = cv2.resize(img, (IMAGE_SIZE, IMAGE_SIZE))
 
 
 

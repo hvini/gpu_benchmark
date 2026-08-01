@@ -53,6 +53,17 @@ def plot_latency_vs_resolution(df, output_dir="plots"):
     plt.savefig(os.path.join(output_dir, 'latency_vs_resolution.png'), dpi=300)
     plt.close()
 
+def plot_power_vs_resolution(df, output_dir="plots"):
+    plt.figure(figsize=(12, 6))
+    sns.barplot(data=df, x='resolution', y='avg_power_W', hue='gpu')
+    plt.title('Average Power vs Resolution', fontsize=16, pad=15)
+    plt.xlabel('Resolution', fontsize=14)
+    plt.ylabel('Average Power (W)', fontsize=14)
+    plt.legend(title='GPU', bbox_to_anchor=(1.05, 1), loc='upper left')
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, 'power_vs_resolution.png'), dpi=300)
+    plt.close()
+
 def plot_fps_per_watt(df, output_dir="plots"):
     plt.figure(figsize=(12, 6))
     sns.barplot(data=df, x='resolution', y='fps_per_watt', hue='gpu')
@@ -64,10 +75,21 @@ def plot_fps_per_watt(df, output_dir="plots"):
     plt.savefig(os.path.join(output_dir, 'fps_per_watt.png'), dpi=300)
     plt.close()
 
+def plot_gpu_utilization_vs_resolution(df, output_dir="plots"):
+    plt.figure(figsize=(12, 6))
+    sns.barplot(data=df, x='resolution', y='gpu_util_mean_pct', hue='gpu')
+    plt.title('Mean GPU Utilization vs Resolution', fontsize=16, pad=15)
+    plt.xlabel('Resolution', fontsize=14)
+    plt.ylabel('GPU Utilization (%)', fontsize=14)
+    plt.legend(title='GPU', bbox_to_anchor=(1.05, 1), loc='upper left')
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, 'gpu_utilization_vs_resolution.png'), dpi=300)
+    plt.close()
+
 def plot_gpu_memory_usage(df, output_dir="plots"):
     plt.figure(figsize=(12, 6))
-    sns.barplot(data=df, x='resolution', y='gpu_memory_MB', hue='gpu')
-    plt.title('GPU Memory Usage vs Resolution', fontsize=16, pad=15)
+    sns.barplot(data=df, x='resolution', y='gpu_memory_max_MB', hue='gpu')
+    plt.title('Max GPU Memory Usage vs Resolution', fontsize=16, pad=15)
     plt.xlabel('Resolution', fontsize=14)
     plt.ylabel('Memory Usage (MB)', fontsize=14)
     plt.legend(title='GPU', bbox_to_anchor=(1.05, 1), loc='upper left')
@@ -124,7 +146,7 @@ def plot_performance_scaling(df, output_dir="plots"):
 def main():
     # Setup directories relative to the script location
     base_dir = os.path.dirname(os.path.abspath(__file__))
-    results_dir = os.path.join(base_dir, "results")
+    results_dir = os.path.join(base_dir, "data", "results_utilization")
     output_dir = os.path.join(base_dir, "plots")
     
     if not os.path.exists(output_dir):
@@ -143,8 +165,14 @@ def main():
         print("Generating Latency vs Resolution plot...")
         plot_latency_vs_resolution(df, output_dir)
         
+        print("Generating Power vs Resolution plot...")
+        plot_power_vs_resolution(df, output_dir)
+        
         print("Generating FPS/Watt plot...")
         plot_fps_per_watt(df, output_dir)
+        
+        print("Generating GPU Utilization vs Resolution plot...")
+        plot_gpu_utilization_vs_resolution(df, output_dir)
         
         print("Generating GPU Memory Usage plot...")
         plot_gpu_memory_usage(df, output_dir)
@@ -156,3 +184,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
