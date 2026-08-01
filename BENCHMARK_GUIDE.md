@@ -26,6 +26,10 @@ Modern GPUs dynamically adjust their clock speeds. For an academic benchmark, lo
   nvidia-smi -q -d CLOCK
   ```
   *Look under the `Max Clocks` section for the `Graphics` value (e.g., `2550 MHz`).*
+- Before applying locks, enable persistence mode so your settings aren't reset between runs:
+  ```bash
+  sudo nvidia-smi -pm 1
+  ```
 - Lock the clock explicitly to that exact frequency (e.g., if your max graphics clock is 2550 MHz):
   ```bash
   sudo nvidia-smi -lgc 2550
@@ -59,26 +63,36 @@ Ensure the automated benchmark script has executable permissions (already done, 
 chmod +x run_session.sh
 ```
 
-### Step 2: Run a Benchmark Session
+### Step 2: Run the Official Academic Test Suite
 Execute the session script by providing the `engine` and `precision` as arguments. The script automatically identifies your architecture (ARM for Jetson vs x86_64) and builds the correct Docker container.
 
-**Valid Engines:** `pytorch`, `onnx`, `tensorrt`
-**Valid Precisions:** `fp16`, `fp32`, `int8` *(Note: PyTorch with INT8 is unsupported)*
+For a fair and comprehensive academic comparison, you should run the following sessions in this exact sequence. *Note: PyTorch does not natively support INT8 without special Quantization Aware Training (QAT) in this pipeline, so it is excluded from INT8. TensorRT's INT8 uses Post-Training Quantization (PTQ), which is perfectly fair to compare against FP16/FP32 as it represents the peak capability and intended use-case of modern edge/server hardware.*
 
-**Examples:**
+**1. The Baseline (PyTorch)**
+Run the native PyTorch engine to establish your baseline latency and throughput.
 ```bash
-# Run a TensorRT FP16 session
-./run_session.sh tensorrt fp16
-
-# Run an ONNX INT8 session
-./run_session.sh onnx int8
-
-# Run a PyTorch FP32 session
 ./run_session.sh pytorch fp32
+./run_session.sh pytorch fp16
 ```
 
-### Step 3: Analyze the Results
-Once the script completes, all performance metrics will be saved as CSV files in the newly created `results/` directory.
+**2. The Intermediate (ONNX)**
+ONNX is widely used in C++ stacks and represents standard graph optimizations.
+```bash
+./run_session.sh onnx fp16
+```
 
-- **Location:** `./results/*.csv`
-- Each CSV contains crucial academic metrics: FPS (Mean/Std), Latency (Mean, Std, p95, p99), GPU power usage, and Memory utilization.
+**3. Maximum Performance (TensorRT)**
+TensorRT is NVIDIA's highly optimized engine and represents the absolute peak performance of the hardware.
+```bash
+./run_session.sh tensorrt fp16
+./run_session.sh tensorrt int8
+```
+
+### Step 3: What to Collect (Data Analysis)
+Once all the above sessions complete, your testing is done. You do not need to parse console logs. All performance metrics are automatically extracted and saved as CSV files in the newly created `results/` directory.
+
+- **What to collect:** Copy the entire `./results/` folder. It will contain a CSV file for every Size + Precision + Engine combination.
+- **Data included:** Each CSV contains crucial academic metrics:
+  - `fps_mean`, `fps_std` (Throughput)
+  - `latency_mean_ms`, `latency_std_ms`, `p95_latency_ms`, `p99_latency_ms` (Real-time determinism)
+  - `avg_power_W`, `gpu_util_mean_pct`, `fps_per_watt` (Efficiency metrics)
