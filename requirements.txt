@@ -6,3 +6,5 @@ nvidia-ml-py
 onnx
 onnxruntime-gpu
 tensorrt
+nvidia-modelopt[onnx]
+
