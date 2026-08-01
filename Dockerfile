@@ -1,5 +1,5 @@
-#FROM nvidia/cuda:12.4.1-cudnn-runtime-ubuntu22.04
-FROM nvidia/cuda:12.8.1-cudnn-runtime-ubuntu22.04
+ARG BASE_IMAGE=nvidia/cuda:12.8.1-cudnn-runtime-ubuntu22.04
+FROM ${BASE_IMAGE}
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV YOLO_CONFIG_DIR=/tmp/Ultralytics
@@ -19,10 +19,13 @@ RUN ln -s /usr/bin/python3 /usr/bin/python
 COPY requirements.txt /tmp/
 
 RUN pip3 install --upgrade pip && \
-    #pip3 install --index-url https://download.pytorch.org/whl/cu124 \
-    #torch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1 && \
-    pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128 && \
-    pip3 install -r /tmp/requirements.txt
+    ARCH=$(uname -m) && \
+    if [ "$ARCH" = "x86_64" ]; then \
+        pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128 && \
+        pip3 install -r /tmp/requirements.txt; \
+    else \
+        pip3 install ultralytics pandas tqdm nvidia-ml-py onnx; \
+    fi
 
 WORKDIR /workspace
 

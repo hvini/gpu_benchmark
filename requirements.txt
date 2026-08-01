@@ -3,3 +3,6 @@ numpy
 pandas
 tqdm
 nvidia-ml-py
+onnx
+onnxruntime-gpu
+tensorrt

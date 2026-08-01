@@ -30,6 +30,8 @@ ITERATIONS = int(os.getenv("ITERATIONS", "1000"))
 
 RUNS = int(os.getenv("RUNS", "5"))
 
+ENGINE = os.getenv("ENGINE", "pytorch").lower()
+
 
 # ==========================================================
 # GPU Monitor (Power + Utilization)
@@ -185,6 +187,7 @@ print("========================")
 print("Model:", MODEL)
 print("Resolution:", IMAGE_SIZE)
 print("Precision:", PRECISION)
+print("Engine:", ENGINE)
 print("Runs:", RUNS)
 print("Iterations:", ITERATIONS)
 
@@ -206,26 +209,54 @@ torch.backends.cudnn.benchmark = True
 
 model = YOLO(MODEL)
 
-model.to("cuda")
+if ENGINE == "pytorch":
 
+    model.to("cuda")
 
-if PRECISION == "fp16":
+    if PRECISION == "fp16":
 
-    print("Using FP16")
+        print("Using FP16")
 
-    model.model.half()
+        model.model.half()
 
+    elif PRECISION == "fp32":
 
-elif PRECISION == "fp32":
+        print("Using FP32")
 
-    print("Using FP32")
+    else:
 
+        raise ValueError(
+            "PyTorch PRECISION must be fp16 or fp32"
+        )
 
 else:
 
-    raise ValueError(
-        "PRECISION must be fp16 or fp32"
-    )
+    export_format = "engine" if ENGINE == "tensorrt" else "onnx"
+    half = (PRECISION == "fp16")
+    int8 = (PRECISION == "int8")
+    data = "coco8.yaml" if int8 else None
+
+    import os
+    model_name = os.path.splitext(os.path.basename(MODEL))[0]
+    target_name = f"{model_name}_{IMAGE_SIZE}_{PRECISION}.{export_format}"
+    
+    if os.path.exists(target_name):
+        print(f"Loading existing {ENGINE} model: {target_name}")
+        model = YOLO(target_name, task="detect")
+    else:
+        print(f"Exporting model to {ENGINE} (half={half}, int8={int8})...")
+        export_path = model.export(
+            format=export_format, 
+            imgsz=IMAGE_SIZE, 
+            half=half, 
+            int8=int8, 
+            data=data,
+            dynamic=False,
+            simplify=True if ENGINE=="onnx" else False
+        )
+        if export_path != target_name:
+            os.rename(export_path, target_name)
+        model = YOLO(target_name, task="detect")
 
 
 
@@ -393,6 +424,10 @@ result = {
         PRECISION,
 
 
+    "engine":
+        ENGINE,
+
+
     "runs":
         RUNS,
 
@@ -492,6 +527,8 @@ filename = (
     f"{result['gpu'].replace(' ','_')}_"
 
     f"{MODEL.replace('.pt','')}_"
+
+    f"{ENGINE}_"
 
     f"{PRECISION}_"
 
