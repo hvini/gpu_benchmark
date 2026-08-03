@@ -1,0 +1,2 @@
+gpu,model,resolution,precision,engine,runs,iterations,fps_mean,fps_std,latency_mean_ms,latency_std_ms,p95_latency_ms,p99_latency_ms,python,torch,cuda,avg_power_W,max_power_W,gpu_util_mean_pct,gpu_util_max_pct,gpu_memory_mean_MB,gpu_memory_max_MB,fps_per_watt
+NVIDIA RTX 6000 Ada Generation,yolo11s.pt,640,fp16,onnx,3,1000,115.29077554862255,0.9185723472072734,8.674086645762126,0.536179145638323,9.379246632258097,11.258487068812052,3.10.12,2.11.0+cu128,12.8,104.86531707317073,105.562,24.203252032520325,25,1411.9375,1411.9375,1.0994176031354328
