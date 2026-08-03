@@ -1,0 +1,2 @@
+gpu,model,resolution,precision,engine,runs,iterations,fps_mean,fps_std,latency_mean_ms,latency_std_ms,p95_latency_ms,p99_latency_ms,python,torch,cuda,avg_power_W,max_power_W,gpu_util_mean_pct,gpu_util_max_pct,gpu_memory_mean_MB,gpu_memory_max_MB,fps_per_watt
+Orin,yolo11s.pt,1920,fp16,tensorrt,3,1000,28.25092880373062,0.04421905458333554,35.39712407302857,0.26232578582799393,35.705939801534015,35.851380615234376,3.8.10,2.0.0a0+ec3941ad.nv23.02,11.4,28.58878919491525,29.164,70.76694915254237,99.0,16991.45444915254,17011.0,0.9881820671424335
