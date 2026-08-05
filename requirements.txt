@@ -5,6 +5,6 @@ tqdm
 nvidia-ml-py
 onnx
 onnxruntime-gpu
-tensorrt
+tensorrt-cu12
 nvidia-modelopt[onnx]
 
