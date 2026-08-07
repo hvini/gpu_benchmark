@@ -1,0 +1,2 @@
+gpu,model,resolution,precision,engine,runs,iterations,fps_mean,fps_std,latency_mean_ms,latency_std_ms,p95_latency_ms,p99_latency_ms,python,torch,cuda,avg_power_W,max_power_W,gpu_util_mean_pct,gpu_util_max_pct,gpu_memory_mean_MB,gpu_memory_max_MB,fps_per_watt
+"NVIDIA L40S",yolo11s.pt,640,fp16,tensorrt,3,1000,1294.67,0.781732,0.772396,0.0144386,0.773344,0.774731,native_cpp,native_cxx11,12.8,166.988,202.672,90.5833,98,1190.62,1190.62,7.75311
