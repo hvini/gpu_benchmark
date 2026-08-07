@@ -1,0 +1,2 @@
+gpu,model,resolution,precision,engine,runs,iterations,fps_mean,fps_std,latency_mean_ms,latency_std_ms,p95_latency_ms,p99_latency_ms,python,torch,cuda,avg_power_W,max_power_W,gpu_util_mean_pct,gpu_util_max_pct,gpu_memory_mean_MB,gpu_memory_max_MB,fps_per_watt
+"NVIDIA GeForce RTX 4060 Ti",yolo11s.pt,1280,fp16,tensorrt,3,1000,271.532,0.0542854,3.6828,0.0880503,3.7847,4.06078,native_cpp,native_cxx11,12.8,158.762,164.751,98.4505,100,1044.08,1053.81,1.71032
