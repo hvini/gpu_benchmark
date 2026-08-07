@@ -1,0 +1,50 @@
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+ARG CUDA_ARCHS
+ARG TORCH_ARCHS
+ARG ORT_URL
+
+# Core dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential cmake git wget unzip libopencv-dev \
+    python3-pip && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /workspace
+
+# Download ONNX Runtime C++ Package dynamically
+RUN wget -q $ORT_URL -O onnxruntime.tgz && \
+    tar -xzf onnxruntime.tgz -C /opt/ && \
+    rm onnxruntime.tgz && \
+    mv /opt/onnxruntime-linux-* /opt/onnxruntime
+
+# Install python requirements with numpy constrained to 1.x ABI compatibility
+RUN pip3 install --upgrade pip && \
+    ARCH=$(uname -m) && \
+    if [ "$ARCH" = "x86_64" ]; then \
+        pip3 install "numpy<2" ultralytics onnx; \
+    else \
+        pip3 install "numpy<2" ultralytics onnx; \
+    fi
+
+# Locate the PyTorch C++ Libraries dynamically via python
+RUN echo "export TORCH_CMAKE_PATH=\$(python3 -c 'import torch; print(torch.utils.cmake_prefix_path)')" >> /etc/profile.d/torch.sh
+
+ENV CMAKE_PREFIX_PATH="/opt/onnxruntime"
+ENV LD_LIBRARY_PATH="/opt/onnxruntime/lib:${LD_LIBRARY_PATH}"
+
+COPY . /workspace
+
+# Build C++ Executable passing dynamically assigned GPU hardware architectures
+RUN . /etc/profile.d/torch.sh && \
+    mkdir -p build && cd build && \
+    cmake .. -DCMAKE_PREFIX_PATH="${TORCH_CMAKE_PATH};${CMAKE_PREFIX_PATH}" \
+             -DTORCH_CUDA_ARCH_LIST="${TORCH_ARCHS}" \
+             -DCMAKE_CUDA_ARCHITECTURES="${CUDA_ARCHS}" && \
+    make -j$(nproc)
+
+# Ensure environments persist when the script invokes the binary
+ENTRYPOINT ["/bin/bash", "-c", ". /etc/profile.d/torch.sh && \"$@\"", "--"]
+CMD ["/workspace/build/benchmark_native"]

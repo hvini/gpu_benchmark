@@ -1,0 +1,2 @@
+gpu,model,resolution,precision,engine,runs,iterations,fps_mean,fps_std,latency_mean_ms,latency_std_ms,p95_latency_ms,p99_latency_ms,python,torch,cuda,avg_power_W,max_power_W,gpu_util_mean_pct,gpu_util_max_pct,gpu_memory_mean_MB,gpu_memory_max_MB,fps_per_watt
+NVIDIA GeForce RTX 5090,yolo11s.pt,1920,fp16,onnx,3,1000,23.35724546038964,0.34965774441714215,42.81963980356852,4.991552182606985,48.13490473429362,49.222997004191086,3.10.12,2.11.0+cu128,12.8,153.9709219968799,160.036,13.25195007800312,17,2538.5625,2538.5625,0.15169906861285767
