@@ -7,10 +7,14 @@ ARG CUDA_ARCHS
 ARG TORCH_ARCHS
 ARG ORT_URL
 
-# Core dependencies
+# Core dependencies (removed apt cmake to avoid installing outdated 3.16.3)
 RUN apt-get update && apt-get install -y \
-    build-essential cmake git wget unzip libopencv-dev \
-    python3-pip && rm -rf /var/lib/apt/lists/*
+    build-essential git wget unzip python3-pip && \
+    ARCH=$(uname -m) && \
+    if [ "$ARCH" = "x86_64" ]; then \
+        apt-get install -y libopencv-dev; \
+    fi && \
+    rm -rf /var/lib/apt/lists/*
 
 WORKDIR /workspace
 
@@ -20,20 +24,21 @@ RUN wget -q $ORT_URL -O onnxruntime.tgz && \
     rm onnxruntime.tgz && \
     mv /opt/onnxruntime-linux-* /opt/onnxruntime
 
-# Install python requirements with numpy constrained to 1.x ABI compatibility
-RUN pip3 install --upgrade pip && \
-    ARCH=$(uname -m) && \
-    if [ "$ARCH" = "x86_64" ]; then \
-        pip3 install "numpy<2" ultralytics onnx; \
-    else \
-        pip3 install "numpy<2" ultralytics onnx; \
-    fi
-
 # Locate the PyTorch C++ Libraries dynamically via python
 RUN echo "export TORCH_CMAKE_PATH=\$(python3 -c 'import torch; print(torch.utils.cmake_prefix_path)')" >> /etc/profile.d/torch.sh
 
 ENV CMAKE_PREFIX_PATH="/opt/onnxruntime"
 ENV LD_LIBRARY_PATH="/opt/hpcx/ucx/lib:/opt/hpcx/ucc/lib:/opt/onnxruntime/lib:${LD_LIBRARY_PATH}"
+
+# Upgrade pip & install modern CMake (>3.18) alongside Python packages
+RUN pip3 install --upgrade pip cmake && \
+    ARCH=$(uname -m) && \
+    if [ "$ARCH" = "x86_64" ]; then \
+        pip3 install "numpy>=1.23.0,<2" ultralytics onnx onnxslim; \
+    else \
+        python3 -c "import site, os; d = site.getsitepackages()[0]; os.makedirs(os.path.join(d, 'polars-0.20.31.dist-info'), exist_ok=True); open(os.path.join(d, 'polars-0.20.31.dist-info', 'METADATA'), 'w').write('Metadata-Version: 2.1\nName: polars\nVersion: 0.20.31\n')" && \
+        pip3 install "numpy>=1.23.0,<2" ultralytics onnx onnxslim; \
+    fi
 
 COPY . /workspace
 
@@ -42,9 +47,11 @@ RUN . /etc/profile.d/torch.sh && \
     mkdir -p build && cd build && \
     cmake .. -DCMAKE_PREFIX_PATH="${TORCH_CMAKE_PATH};${CMAKE_PREFIX_PATH}" \
              -DTORCH_CUDA_ARCH_LIST="${TORCH_ARCHS}" \
-             -DCMAKE_CUDA_ARCHITECTURES="${CUDA_ARCHS}" && \
+             -DCMAKE_CUDA_ARCHITECTURES="${CUDA_ARCHS}" \
+             -DCMAKE_EXE_LINKER_FLAGS="-Wl,--allow-shlib-undefined" && \
     make -j$(nproc)
 
 # Ensure environments persist when the script invokes the binary
 ENTRYPOINT ["/bin/bash", "-c", ". /etc/profile.d/torch.sh && \"$@\"", "--"]
 CMD ["/workspace/build/benchmark_native"]
+

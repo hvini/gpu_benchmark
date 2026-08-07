@@ -1,5 +1,4 @@
-#ifndef GPU_MONITOR_HPP
-#define GPU_MONITOR_HPP
+#pragma once
 
 #include <iostream>
 #include <vector>
@@ -8,14 +7,14 @@
 #include <chrono>
 #include <numeric>
 #include <algorithm>
-#include <cmath>
-#include <nvml.h>
+#include <string>
+#include <regex>
+#include <cstdio>
+#include <cstdlib>
 
-struct GPUSample {
-    double power_w;
-    double gpu_util_pct;
-    double memory_mb;
-};
+#ifdef USE_NVML
+#include <nvml.h>
+#endif
 
 struct GPUMetrics {
     double avg_power_W = 0.0;
@@ -29,90 +28,111 @@ struct GPUMetrics {
 class GPUMonitor {
 private:
     std::atomic<bool> running{false};
-    std::thread worker_thread;
-    std::vector<GPUSample> samples;
-    nvmlDevice_t device_handle;
-    int sample_interval_ms;
+    std::thread monitor_thread;
+    
+    std::vector<double> power_readings;
+    std::vector<double> util_readings;
+    std::vector<double> mem_readings;
 
-    void sample_loop() {
-        while (running) {
-            GPUSample sample{0.0, 0.0, 0.0};
-            
-            // Power in mW -> Convert to W
-            unsigned int power_mw = 0;
-            if (nvmlDeviceGetPowerUsage(device_handle, &power_mw) == NVML_SUCCESS) {
-                sample.power_w = power_mw / 1000.0;
-            }
+    double calculate_mean(const std::vector<double>& v) {
+        if (v.empty()) return 0.0;
+        return std::accumulate(v.begin(), v.end(), 0.0) / v.size();
+    }
 
-            // Utilization rates
-            nvmlUtilization_t util;
-            if (nvmlDeviceGetUtilizationRates(device_handle, &util) == NVML_SUCCESS) {
-                sample.gpu_util_pct = static_cast<double>(util.gpu);
-            }
-
-            // Memory info
-            nvmlMemory_t mem;
-            if (nvmlDeviceGetMemoryInfo(device_handle, &mem) == NVML_SUCCESS) {
-                sample.memory_mb = static_cast<double>(mem.used) / (1024.0 * 1024.0);
-            }
-
-            samples.push_back(sample);
-            std::this_thread::sleep_for(std::chrono::milliseconds(sample_interval_ms));
-        }
+    double calculate_max(const std::vector<double>& v) {
+        if (v.empty()) return 0.0;
+        return *std::max_element(v.begin(), v.end());
     }
 
 public:
-    GPUMonitor(int interval_ms = 100) : sample_interval_ms(interval_ms) {
-        nvmlInit();
-        nvmlDeviceGetHandleByIndex(0, &device_handle);
-    }
-
-    ~GPUMonitor() {
-        stop();
-        nvmlShutdown();
-    }
-
     void start() {
-        samples.clear();
         running = true;
-        worker_thread = std::thread(&GPUMonitor::sample_loop, this);
+
+#ifdef USE_NVML
+        // --- DESKTOP (NVML) ---
+        nvmlInit();
+        monitor_thread = std::thread([this]() {
+            nvmlDevice_t device;
+            nvmlDeviceGetHandleByIndex(0, &device);
+            while (running) {
+                unsigned int power = 0;
+                if (nvmlDeviceGetPowerUsage(device, &power) == NVML_SUCCESS) power_readings.push_back(power / 1000.0);
+                nvmlUtilization_t util;
+                if (nvmlDeviceGetUtilizationRates(device, &util) == NVML_SUCCESS) util_readings.push_back(util.gpu);
+                nvmlMemory_t mem;
+                if (nvmlDeviceGetMemoryInfo(device, &mem) == NVML_SUCCESS) mem_readings.push_back(mem.used / (1024.0 * 1024.0));
+                std::this_thread::sleep_for(std::chrono::milliseconds(50));
+            }
+        });
+#else
+        // --- JETSON (tegrastats) ---
+        monitor_thread = std::thread([this]() {
+            // Equivalent to Python's subprocess.Popen
+            FILE* pipe = popen("tegrastats --interval 50", "r");
+            if (!pipe) return;
+
+            // Equivalent to Python's re.compile
+            std::regex gr3d_pattern(R"(GR3D(?:_FREQ)?\s+(\d+)%)");
+            std::regex power_pattern(R"((?:VDD_IN|POM_5V_IN|VDD_SYS_GPU|VDD_SYS_SOC)\s+(\d+)(?:mW)?/\d+(?:mW)?)");
+            std::regex fallback_power_pattern(R"((?:VDD|POM|VIN|PWR)[A-Za-z0-9_]*\s+(\d+)(?:mW)?/\d+(?:mW)?)");
+            std::regex ram_pattern(R"(RAM\s+(\d+)/\d+MB)");
+
+            char buffer[512];
+            // Read stdout pipe line-by-line in memory
+            while (running && fgets(buffer, sizeof(buffer), pipe) != nullptr) {
+                std::string line(buffer);
+                std::smatch match;
+
+                // GPU Utilization
+                if (std::regex_search(line, match, gr3d_pattern)) {
+                    util_readings.push_back(std::stod(match[1].str()));
+                }
+
+                // Power
+                if (std::regex_search(line, match, power_pattern)) {
+                    power_readings.push_back(std::stod(match[1].str()) / 1000.0);
+                } else {
+                    double max_pwr = 0.0;
+                    auto words_begin = std::sregex_iterator(line.begin(), line.end(), fallback_power_pattern);
+                    auto words_end = std::sregex_iterator();
+                    for (std::sregex_iterator i = words_begin; i != words_end; ++i) {
+                        double p = std::stod((*i)[1].str()) / 1000.0;
+                        if (p > max_pwr) max_pwr = p;
+                    }
+                    if (max_pwr > 0.0) power_readings.push_back(max_pwr);
+                }
+
+                // Memory
+                if (std::regex_search(line, match, ram_pattern)) {
+                    mem_readings.push_back(std::stod(match[1].str()));
+                }
+            }
+            pclose(pipe);
+        });
+#endif
     }
 
     void stop() {
-        if (running) {
-            running = false;
-            if (worker_thread.joinable()) {
-                worker_thread.join();
-            }
+        running = false;
+#ifdef USE_NVML
+        nvmlShutdown();
+#else
+        // Kill tegrastats to force the stdout pipe to close, unblocking fgets
+        std::system("pkill -9 tegrastats"); 
+#endif
+        if (monitor_thread.joinable()) {
+            monitor_thread.join();
         }
     }
 
     GPUMetrics get_results() {
-        if (samples.empty()) return GPUMetrics{};
-
-        GPUMetrics res;
-        double sum_power = 0.0, sum_util = 0.0, sum_mem = 0.0;
-        res.max_power_W = 0.0;
-        res.gpu_util_max_pct = 0.0;
-        res.gpu_memory_max_MB = 0.0;
-
-        for (const auto& s : samples) {
-            sum_power += s.power_w;
-            sum_util += s.gpu_util_pct;
-            sum_mem += s.memory_mb;
-
-            res.max_power_W = std::max(res.max_power_W, s.power_w);
-            res.gpu_util_max_pct = std::max(res.gpu_util_max_pct, s.gpu_util_pct);
-            res.gpu_memory_max_MB = std::max(res.gpu_memory_max_MB, s.memory_mb);
-        }
-
-        size_t n = samples.size();
-        res.avg_power_W = sum_power / n;
-        res.gpu_util_mean_pct = sum_util / n;
-        res.gpu_memory_mean_MB = sum_mem / n;
-
-        return res;
+        GPUMetrics metrics;
+        metrics.avg_power_W = calculate_mean(power_readings);
+        metrics.max_power_W = calculate_max(power_readings);
+        metrics.gpu_util_mean_pct = calculate_mean(util_readings);
+        metrics.gpu_util_max_pct = calculate_max(util_readings);
+        metrics.gpu_memory_mean_MB = calculate_mean(mem_readings);
+        metrics.gpu_memory_max_MB = calculate_max(mem_readings);
+        return metrics;
     }
 };
-
-#endif
