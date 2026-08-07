@@ -123,10 +123,15 @@ public:
         session_options.SetIntraOpNumThreads(1);
         session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
 
-        OrtCUDAProviderOptions cuda_options;
+	OrtCUDAProviderOptions cuda_options;
         cuda_options.device_id = 0;
-        cuda_options.cudnn_conv_algo_search = OrtCudnnConvAlgoSearchHeuristic;
-        session_options.AppendExecutionProvider_CUDA(cuda_options);
+        cuda_options.cudnn_conv_algo_search = OrtCudnnConvAlgoSearchExhaustive;
+        
+        try {
+            session_options.AppendExecutionProvider_CUDA(cuda_options);
+        } catch (...) {
+            std::cout << "[WARN] ONNX CUDA Provider failed/missing (expected on Jetson). Falling back to CPU." << std::endl;
+        }
 
         session = std::make_unique<Ort::Session>(env, model_path.c_str(), session_options);
 
@@ -195,8 +200,14 @@ public:
         file.read(trtModelStream.data(), size);
         file.close();
 
-        runtime = nvinfer1::createInferRuntime(gLogger);
+	runtime = nvinfer1::createInferRuntime(gLogger);
         engine = runtime->deserializeCudaEngine(trtModelStream.data(), size);
+        
+        // Prevent Null Pointer Dereference
+        if (!engine) {
+            throw std::runtime_error("The .engine file was compiled with an incompatible TensorRT version. Please delete *.engine and re-run.");
+        }
+
         context = engine->createExecutionContext();
 
         cudaStreamCreate(&stream);

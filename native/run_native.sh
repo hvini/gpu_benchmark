@@ -20,17 +20,28 @@ echo "Architecture: $ARCH | Engine: $ENGINE | Precision: $PRECISION"
 echo "=========================================="
 
 if [ "$ARCH" = "aarch64" ]; then
+    # Jetson Orin / Xavier (JetPack 5)
     BASE_IMAGE="nvcr.io/nvidia/l4t-ml:r35.2.1-py3"
+    CUDA_ARCHS="72;87"
+    TORCH_ARCHS="7.2;8.7"
+    ORT_URL="https://github.com/microsoft/onnxruntime/releases/download/v1.19.2/onnxruntime-linux-aarch64-1.19.2.tgz"
 else
-    # Official NVIDIA TensorRT image (contains trtexec and native TRT headers)
-    BASE_IMAGE="nvcr.io/nvidia/tensorrt:24.08-py3"
+    # NVIDIA NGC PyTorch Container (Fully optimized for RTX 20, 30, 40, and 50-Series Blackwell GPUs)
+    BASE_IMAGE="nvcr.io/nvidia/pytorch:25.01-py3"
+    CUDA_ARCHS="75;80;86;89;90;120"
+    TORCH_ARCHS="7.5;8.0;8.6;8.9;9.0;12.0"
+    ORT_URL="https://github.com/microsoft/onnxruntime/releases/download/v1.19.2/onnxruntime-linux-x64-gpu-1.19.2.tgz"
 fi
 
-echo "Building Native Docker Image..."
-docker build -f Dockerfile.native --build-arg BASE_IMAGE=$BASE_IMAGE -t yolo-native-benchmark .
+echo "Building Native Docker Image for $CUDA_ARCHS..."
+docker build -f Dockerfile.native \
+    --build-arg BASE_IMAGE=$BASE_IMAGE \
+    --build-arg CUDA_ARCHS="$CUDA_ARCHS" \
+    --build-arg TORCH_ARCHS="$TORCH_ARCHS" \
+    --build-arg ORT_URL="$ORT_URL" \
+    -t yolo-native-benchmark .
 
 mkdir -p results
-
 SIZES=(640 1280 1920)
 
 for size in "${SIZES[@]}"; do
@@ -61,14 +72,14 @@ for size in "${SIZES[@]}"; do
         elif [ "$ENGINE" = "onnx" ]; then
             docker run --rm --gpus all -v "$(pwd):/data" -w /data yolo-native-benchmark \
                 python3 -c "import os; from ultralytics import YOLO; m=YOLO('yolo11s.pt'); p=str(m.export(format='onnx', imgsz=$size, half=('$PRECISION'=='fp16'), int8=('$PRECISION'=='int8'), simplify=True, device=0)); os.replace(p, '$TARGET') if os.path.basename(p) != '$TARGET' else None"
-        
-        elif [ "$ENGINE" = "tensorrt" ]; then
+     
+	elif [ "$ENGINE" = "tensorrt" ]; then
             # 1. Export to ONNX via Python
             ONNX_TEMP="yolo11s_${size}_${PRECISION}.onnx"
             docker run --rm --gpus all -v "$(pwd):/data" -w /data yolo-native-benchmark \
                 python3 -c "import os; from ultralytics import YOLO; m=YOLO('yolo11s.pt'); p=str(m.export(format='onnx', imgsz=$size, half=('$PRECISION'=='fp16'), simplify=True, device=0)); os.replace(p, '$ONNX_TEMP') if os.path.basename(p) != '$ONNX_TEMP' else None"
             
-            # 2. Compile ONNX to TensorRT Engine natively using NVIDIA's trtexec
+            # 2. Compile ONNX to TensorRT Engine natively using trtexec
             TRT_FLAGS=""
             if [ "$PRECISION" = "fp16" ]; then TRT_FLAGS="--fp16"; fi
             if [ "$PRECISION" = "int8" ]; then TRT_FLAGS="--int8"; fi
@@ -76,7 +87,7 @@ for size in "${SIZES[@]}"; do
             echo "⚙️ Compiling ONNX to TensorRT Engine natively using trtexec..."
             docker run --rm --gpus all -v "$(pwd):/data" -w /data yolo-native-benchmark \
                 trtexec --onnx=$ONNX_TEMP --saveEngine=$TARGET $TRT_FLAGS
-        fi
+        fi   
     fi
 
     echo "================================================="
@@ -93,8 +104,7 @@ for size in "${SIZES[@]}"; do
         -e ITERATIONS=1000 \
         -e WARMUP=100 \
         -e RUNS=3 \
-        yolo-native-benchmark \
-        /workspace/build/benchmark_native
+        yolo-native-benchmark
         
 done
 
