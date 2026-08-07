@@ -33,7 +33,7 @@ RUN pip3 install --upgrade pip && \
 RUN echo "export TORCH_CMAKE_PATH=\$(python3 -c 'import torch; print(torch.utils.cmake_prefix_path)')" >> /etc/profile.d/torch.sh
 
 ENV CMAKE_PREFIX_PATH="/opt/onnxruntime"
-ENV LD_LIBRARY_PATH="/opt/onnxruntime/lib:${LD_LIBRARY_PATH}"
+ENV LD_LIBRARY_PATH="/opt/hpcx/ucx/lib:/opt/hpcx/ucc/lib:/opt/onnxruntime/lib:${LD_LIBRARY_PATH}"
 
 COPY . /workspace
 
