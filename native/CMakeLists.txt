@@ -22,8 +22,12 @@ target_link_libraries(benchmark_native PRIVATE
     ${OpenCV_LIBS} 
     CUDA::cuda_driver 
     CUDA::cudart 
-    CUDA::nvml
 )
+
+if(CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64")
+    target_link_libraries(benchmark_native PRIVATE CUDA::nvml)
+    target_compile_definitions(benchmark_native PRIVATE USE_NVML)
+endif()
 
 if(ENABLE_TORCH)
     find_package(Torch REQUIRED)
