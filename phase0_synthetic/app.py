@@ -216,19 +216,24 @@ header { visibility: hidden; }
 # ── Data loading ─────────────────────────────────────────────────────────────
 @st.cache_data
 def load_data():
-    def read_dir(data_dir, runtime_label):
+    def read_all_data(data_dir):
         files = glob.glob(os.path.join(data_dir, "**/*.csv"), recursive=True)
         rows = []
         for f in files:
             try:
                 d = pd.read_csv(f)
-                d["runtime"] = runtime_label
+                if "_python.csv" in f:
+                    d["runtime"] = "Python"
+                elif "_native.csv" in f:
+                    d["runtime"] = "Native C++"
+                else:
+                    d["runtime"] = "Unknown"
                 rows.append(d)
             except Exception:
                 pass
         return rows
 
-    all_rows = read_dir("data", "Python") + read_dir("native/data", "Native C++")
+    all_rows = read_all_data("../results/phase0_synthetic")
     if not all_rows:
         return pd.DataFrame()
 

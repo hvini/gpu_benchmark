@@ -26,7 +26,7 @@
 #include <NvInfer.h>
 #endif
 
-#include "GPUMonitor.hpp"
+#include "../../shared/GPUMonitor.hpp"
 
 // Utility Functions
 double calculate_mean(const std::vector<double>& v) {
@@ -417,7 +417,7 @@ int main(int argc, char** argv) {
     std::string gpu_file_str = gpu_name;
     std::replace(gpu_file_str.begin(), gpu_file_str.end(), ' ', '_');
 
-    std::string filename = gpu_file_str + "_" + model_base + "_" + engine_type + "_" + precision + "_" + std::to_string(image_size) + ".csv";
+    std::string filename = gpu_file_str + "_" + model_base + "_" + engine_type + "_" + precision + "_" + std::to_string(image_size) + "_native.csv";
     std::string csv_path = output_dir + "/" + filename;
 
     std::ofstream csv(csv_path);

@@ -29,9 +29,12 @@ RUN pip3 install --upgrade pip && \
         pip3 install ultralytics pandas tqdm nvidia-ml-py onnx; \
     fi
 
+ARG PYTHON_SRC_DIR=phase0_synthetic
+
 WORKDIR /workspace
 
-COPY benchmark.py /workspace/
-COPY yolo11s.pt /workspace/
+COPY ${PYTHON_SRC_DIR}/benchmark.py /workspace/
+COPY models/yolo11s.pt /workspace/
+COPY shared/gpu_monitor.py /workspace/
 
 CMD ["python", "benchmark.py"]

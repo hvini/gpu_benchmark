@@ -34,10 +34,10 @@ else
 fi
 
 echo "Building Docker image..."
-docker build --build-arg BASE_IMAGE=$BASE_IMAGE -t yolo-benchmark .
+docker build --build-arg BASE_IMAGE=$BASE_IMAGE -t yolo-benchmark ..
 
 echo "Creating results directory..."
-mkdir -p results
+mkdir -p ../results/phase0_synthetic
 
 # We loop through sizes for this specific session
 SIZES=(640 1280 1920)
@@ -55,7 +55,7 @@ for size in "${SIZES[@]}"; do
     echo "================================================="
     
     docker run --rm $DOCKER_GPU_ARGS \
-        -v "$(pwd)/results:/workspace/results" \
+        -v "$(pwd)/../results/phase0_synthetic:/workspace/results" \
         -e IMAGE_SIZE="$size" \
         -e PRECISION="$PRECISION" \
         -e ENGINE="$ENGINE" \

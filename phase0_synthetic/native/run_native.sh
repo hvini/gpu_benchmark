@@ -36,14 +36,14 @@ else
 fi
 
 echo "Building Native Docker Image for $CUDA_ARCHS..."
-docker build -f Dockerfile.native \
+docker build -f ../../Dockerfile.native \
     --build-arg BASE_IMAGE=$BASE_IMAGE \
     --build-arg CUDA_ARCHS="$CUDA_ARCHS" \
     --build-arg TORCH_ARCHS="$TORCH_ARCHS" \
     --build-arg ORT_URL="$ORT_URL" \
-    -t yolo-native-benchmark .
+    -t yolo-native-benchmark ../..
 
-mkdir -p results
+mkdir -p ../../results/phase0_synthetic
 SIZES=(640 1280 1920)
 
 for size in "${SIZES[@]}"; do
@@ -67,19 +67,19 @@ for size in "${SIZES[@]}"; do
     else
         echo "⚙️ Exporting $TARGET (This will take a moment)..."
      	if [ "$ENGINE" = "pytorch" ]; then
-            docker run --rm $DOCKER_GPU_ARGS -v "$(pwd):/data" -w /data yolo-native-benchmark \
-                python3 -c "import os; from ultralytics import YOLO; m=YOLO('yolo11s.pt'); p=str(m.export(format='torchscript', imgsz=$size, half=('$PRECISION'=='fp16'), device=0)); os.replace(p, '$TARGET') if os.path.basename(p) != '$TARGET' else None"
+            docker run --rm $DOCKER_GPU_ARGS -v "$(pwd)/../..:/workspace" -w /workspace/phase0_synthetic/native yolo-native-benchmark \
+                python3 -c "import os; from ultralytics import YOLO; m=YOLO('../../models/yolo11s.pt'); p=str(m.export(format='torchscript', imgsz=$size, half=('$PRECISION'=='fp16'), device=0)); os.replace(p, '$TARGET') if os.path.basename(p) != '$TARGET' else None"
         
         elif [ "$ENGINE" = "onnx" ]; then
-            docker run --rm $DOCKER_GPU_ARGS -v "$(pwd):/data" -w /data yolo-native-benchmark \
-                python3 -c "import os; from ultralytics import YOLO; m=YOLO('yolo11s.pt'); p=str(m.export(format='onnx', imgsz=$size, half=('$PRECISION'=='fp16'), int8=('$PRECISION'=='int8'), simplify=True, device=0)); os.replace(p, '$TARGET') if os.path.basename(p) != '$TARGET' else None"
+            docker run --rm $DOCKER_GPU_ARGS -v "$(pwd)/../..:/workspace" -w /workspace/phase0_synthetic/native yolo-native-benchmark \
+                python3 -c "import os; from ultralytics import YOLO; m=YOLO('../../models/yolo11s.pt'); p=str(m.export(format='onnx', imgsz=$size, half=('$PRECISION'=='fp16'), int8=('$PRECISION'=='int8'), simplify=True, device=0)); os.replace(p, '$TARGET') if os.path.basename(p) != '$TARGET' else None"
         
         elif [ "$ENGINE" = "tensorrt" ]; then
             ONNX_TEMP="yolo11s_${size}_${PRECISION}_temp.onnx"
             
             # 1. Export temporary ONNX file
-            docker run --rm $DOCKER_GPU_ARGS -v "$(pwd):/data" -w /data yolo-native-benchmark \
-                python3 -c "import os; from ultralytics import YOLO; m=YOLO('yolo11s.pt'); p=str(m.export(format='onnx', imgsz=$size, half=('$PRECISION'=='fp16'), simplify=True, device=0)); os.replace(p, '$ONNX_TEMP') if os.path.basename(p) != '$ONNX_TEMP' else None"
+            docker run --rm $DOCKER_GPU_ARGS -v "$(pwd)/../..:/workspace" -w /workspace/phase0_synthetic/native yolo-native-benchmark \
+                python3 -c "import os; from ultralytics import YOLO; m=YOLO('../../models/yolo11s.pt'); p=str(m.export(format='onnx', imgsz=$size, half=('$PRECISION'=='fp16'), simplify=True, device=0)); os.replace(p, '$ONNX_TEMP') if os.path.basename(p) != '$ONNX_TEMP' else None"
             
             # 2. Compile ONNX to TRT Engine natively using container's trtexec
             TRT_FLAGS=""
@@ -87,7 +87,7 @@ for size in "${SIZES[@]}"; do
             if [ "$PRECISION" = "int8" ]; then TRT_FLAGS="--int8"; fi
             
             echo "⚙️ Compiling ONNX to TensorRT Engine natively using trtexec..."
-            docker run --rm $DOCKER_GPU_ARGS -v "$(pwd):/data" -w /data yolo-native-benchmark \
+            docker run --rm $DOCKER_GPU_ARGS -v "$(pwd)/../..:/workspace" -w /workspace/phase0_synthetic/native yolo-native-benchmark \
                 /usr/src/tensorrt/bin/trtexec --onnx=$ONNX_TEMP --saveEngine=$TARGET $TRT_FLAGS
             
             # 3. Clean up intermediate ONNX file automatically
@@ -100,9 +100,9 @@ for size in "${SIZES[@]}"; do
     echo "================================================="
     
     docker run --rm $DOCKER_GPU_ARGS \
-        -v "$(pwd)/results:/workspace/results" \
-        -v "$(pwd):/data" \
-        -w /data \
+        -v "$(pwd)/../../results/phase0_synthetic:/workspace/results" \
+        -v "$(pwd)/../..:/workspace" \
+        -w /workspace/phase0_synthetic/native \
         -e IMAGE_SIZE="$size" \
         -e PRECISION="$PRECISION" \
         -e ENGINE="$ENGINE" \
@@ -112,4 +112,4 @@ for size in "${SIZES[@]}"; do
         yolo-native-benchmark   
 done
 
-echo "Native Benchmark session completed! Results are in ./results"
+echo "Native Benchmark session completed! Results are in ../../results/phase0_synthetic"

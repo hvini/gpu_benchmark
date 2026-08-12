@@ -42,10 +42,12 @@ RUN pip3 install --upgrade pip cmake && \
 
 COPY . /workspace
 
+ARG NATIVE_SRC_DIR=phase0_synthetic/native
+
 # Build C++ Executable passing dynamically assigned GPU hardware architectures
 RUN . /etc/profile.d/torch.sh && \
     mkdir -p build && cd build && \
-    cmake .. -DCMAKE_PREFIX_PATH="${TORCH_CMAKE_PATH};${CMAKE_PREFIX_PATH}" \
+    cmake ../${NATIVE_SRC_DIR} -DCMAKE_PREFIX_PATH="${TORCH_CMAKE_PATH};${CMAKE_PREFIX_PATH}" \
              -DTORCH_CUDA_ARCH_LIST="${TORCH_ARCHS}" \
              -DCMAKE_CUDA_ARCHITECTURES="${CUDA_ARCHS}" \
              -DCMAKE_EXE_LINKER_FLAGS="-Wl,--allow-shlib-undefined" && \
