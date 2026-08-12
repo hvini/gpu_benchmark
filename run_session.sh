@@ -19,10 +19,17 @@ echo "Detected Architecture: $ARCH"
 if [ "$ARCH" = "aarch64" ]; then
     # Standard L4T ML image for Jetson (comes with PyTorch & TensorRT pre-installed)
     BASE_IMAGE="nvcr.io/nvidia/l4t-ml:r35.2.1-py3"
+    if [ -x "$(command -v tegrastats)" ]; then
+        TEGRA_PATH=$(command -v tegrastats)
+        DOCKER_GPU_ARGS="--runtime nvidia -v $TEGRA_PATH:/usr/bin/tegrastats"
+    else
+        DOCKER_GPU_ARGS="--runtime nvidia"
+    fi
     echo "Using Jetson Base Image: $BASE_IMAGE"
 else
     # Default x86_64 image for desktop/server GPUs
     BASE_IMAGE="nvidia/cuda:12.8.1-cudnn-runtime-ubuntu22.04"
+    DOCKER_GPU_ARGS="--gpus all"
     echo "Using x86_64 Base Image: $BASE_IMAGE"
 fi
 
@@ -47,7 +54,7 @@ for size in "${SIZES[@]}"; do
     echo "Running Benchmark: Engine=$ENGINE | Precision=$PRECISION | Size=$size"
     echo "================================================="
     
-    docker run --rm --gpus all \
+    docker run --rm $DOCKER_GPU_ARGS \
         -v "$(pwd)/results:/workspace/results" \
         -e IMAGE_SIZE="$size" \
         -e PRECISION="$PRECISION" \
@@ -60,3 +67,4 @@ for size in "${SIZES[@]}"; do
 done
 
 echo "Session completed successfully! Results are in ./results"
+
