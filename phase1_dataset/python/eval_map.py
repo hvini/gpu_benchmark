@@ -46,32 +46,36 @@ model = YOLO(os.path.join("../../models", MODEL) if not os.path.isabs(MODEL) els
 if ENGINE == "pytorch":
     pass
 else:
-    export_format = "engine" if ENGINE == "tensorrt" else "onnx"
-    half = (PRECISION == "fp16")
-    int8 = (PRECISION == "int8")
-    data = "coco8.yaml" if int8 else None
+        export_format = "engine" if ENGINE == "tensorrt" else "onnx"
+        half = (PRECISION == "fp16")
+        int8 = (PRECISION == "int8")
+        data = "coco8.yaml" if int8 else None
 
-    model_name = os.path.splitext(os.path.basename(MODEL))[0]
-    target_name = f"../../models/{model_name}_{IMAGE_SIZE}_{PRECISION}.{export_format}"
-    
-    if os.path.exists(target_name):
-        print(f"Loading existing {ENGINE} model: {target_name}")
-        model = YOLO(target_name, task="detect")
-    else:
-        print(f"Exporting model to {ENGINE} (half={half}, int8={int8})...")
-        export_path = model.export(
-            format=export_format, 
-            imgsz=IMAGE_SIZE, 
-            half=half, 
-            int8=int8, 
-            data=data,
-            dynamic=False,
-            simplify=True if ENGINE=="onnx" else False,
-            nms=True if ENGINE=="tensorrt" else False # Bake NMS into TRT for exact parity
-        )
-        if export_path != target_name:
-            os.rename(export_path, target_name)
-        model = YOLO(target_name, task="detect")
+        model_name = os.path.splitext(os.path.basename(MODEL))[0]
+        target_name = f"../../models/{model_name}_{IMAGE_SIZE}_{PRECISION}.{export_format}"
+        
+        if os.path.exists(target_name):
+            print(f"Loading existing {ENGINE} model: {target_name}")
+            model = YOLO(target_name, task="detect")
+            
+        else:
+            print(f"Exporting model to {ENGINE} (half={half}, int8={int8})...")
+            # For TRT 11 compatibility, we MUST leave nms=False to prevent modelopt graph corruption
+            export_path = model.export(
+                format=export_format, 
+                imgsz=IMAGE_SIZE, 
+                half=half, 
+                int8=int8, 
+                data=data,
+                dynamic=False,
+                simplify=True if ENGINE=="onnx" else False,
+                nms=False  # <--- CRITICAL FOR TRT 11
+            )
+            
+            if export_path != target_name:
+                os.rename(export_path, target_name)
+            model = YOLO(target_name, task="detect")
+
 
 # ==========================================================
 # Benchmark Execution

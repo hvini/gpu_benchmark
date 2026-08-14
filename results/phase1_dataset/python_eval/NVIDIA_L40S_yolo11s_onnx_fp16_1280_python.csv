@@ -1,0 +1,2 @@
+gpu,model,resolution,precision,engine,batch_size,map50,map50_95,preprocess_ms,inference_ms,nms_ms,total_latency_ms,fps_e2e,python,torch,cuda,avg_power_W,max_power_W,gpu_util_mean_pct,gpu_util_max_pct,gpu_memory_mean_MB,gpu_memory_max_MB,fps_per_watt
+NVIDIA L40S,yolo11s.pt,1280,fp16,onnx,1,0.5923161451864695,0.4026068643807386,1.7253646351397036,23.12376262107864,1.105114541016519,25.954241797234864,38.529347449731276,3.10.12,2.11.0+cu128,12.8,100.68953587024329,118.069,16.96257018091079,37,1523.144923580786,1552.625,0.3826549314854656
