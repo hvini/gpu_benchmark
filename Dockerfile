@@ -33,7 +33,7 @@ ARG PYTHON_SRC_DIR=phase0_synthetic
 
 WORKDIR /workspace
 
-COPY ${PYTHON_SRC_DIR}/benchmark.py /workspace/
+COPY ${PYTHON_SRC_DIR}/*.py /workspace/
 COPY models/yolo11s.pt /workspace/
 COPY shared/gpu_monitor.py /workspace/
 
