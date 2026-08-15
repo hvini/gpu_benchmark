@@ -1,0 +1,2 @@
+gpu,model,resolution,precision,engine,batch_size,map50,map50_95,preprocess_ms,inference_ms,nms_ms,total_latency_ms,fps_e2e,python,torch,cuda,avg_power_W,max_power_W,gpu_util_mean_pct,gpu_util_max_pct,gpu_memory_mean_MB,gpu_memory_max_MB,fps_per_watt
+NVIDIA GeForce RTX 5060 Ti,yolo11s.pt,1920,fp16,onnx,1,0.4230706548148747,0.27348240827576487,4.014109328810082,54.01470698880148,1.1654001162032728,59.19421643381483,16.893542312838992,3.10.12,2.11.0+cu128,12.8,57.95136368668697,69.214,29.084694159977857,43,1830.7388942706891,1934.25,0.291512420728762
