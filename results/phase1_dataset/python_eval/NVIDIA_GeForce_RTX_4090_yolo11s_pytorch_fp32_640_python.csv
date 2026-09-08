@@ -1,0 +1,2 @@
+gpu,model,resolution,precision,engine,batch_size,map50,map50_95,preprocess_ms,inference_ms,nms_ms,total_latency_ms,fps_e2e,python,torch,cuda,avg_power_W,max_power_W,gpu_util_mean_pct,gpu_util_max_pct,gpu_memory_mean_MB,gpu_memory_max_MB,fps_per_watt
+NVIDIA GeForce RTX 4090,yolo11s.pt,640,fp32,pytorch,1,0.6282541384540243,0.4607504556579434,0.25182907640200936,2.151753678400837,0.36031757379946616,2.763900328602313,361.80754770766055,3.10.12,2.11.0+cu128,12.8,115.05748375451263,136.429,37.18411552346571,52,1519.7883574007221,1542.3125,3.144580742610497
