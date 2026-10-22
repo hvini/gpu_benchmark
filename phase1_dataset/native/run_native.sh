@@ -150,13 +150,13 @@ if os.path.basename(p) != tgt: os.replace(p, tgt)
     docker run --rm $DOCKER_GPU_ARGS \
         --shm-size=8g \
         -v "$(pwd)/../../results/phase1_dataset/native:/workspace/results" \
-        -v "$(pwd)/../..:/workspace" \
+        -v "$(pwd)/$TARGET:/workspace/phase1_dataset/native/$TARGET:ro" \
         -v "$DATASETS_ROOT:/workspace/datasets" \
         -w /workspace/phase1_dataset/native \
         -e ENGINE="$ENGINE" \
         -e PRECISION="$PRECISION" \
         -e IMAGE_SIZE="$size" \
-        -e WARMUP=50 \
+        -e WARMUP=100 \
         -e MODEL="yolo11s.pt" \
         -e OUTPUT_DIR="/workspace/results" \
         -e COCO_IMAGES_DIR="/workspace/datasets/coco/images/val2017" \
@@ -169,3 +169,4 @@ echo "Phase 1 Native Benchmark completed!"
 echo "Results → ../../results/phase1_dataset/native/"
 echo ""
 echo "For mAP scores run: cd ../python && ./run_session.sh $ENGINE $PRECISION"
+

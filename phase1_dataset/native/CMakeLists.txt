@@ -16,9 +16,9 @@ option(ENABLE_TORCH "Enable PyTorch (LibTorch) Engine" ON)
 option(ENABLE_ONNX  "Enable ONNX Runtime Engine" ON)
 option(ENABLE_TRT   "Enable TensorRT Engine" ON)
 
-add_executable(benchmark_map benchmark_map.cpp)
+add_executable(benchmark_native benchmark_map.cpp)
 
-target_link_libraries(benchmark_map PRIVATE
+target_link_libraries(benchmark_native PRIVATE
     ${OpenCV_LIBS}
     CUDA::cuda_driver
     CUDA::cudart
@@ -26,24 +26,25 @@ target_link_libraries(benchmark_map PRIVATE
 
 # Desktop / x86_64: use NVML for accurate power readings
 if(CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64")
-    target_link_libraries(benchmark_map PRIVATE CUDA::nvml)
-    target_compile_definitions(benchmark_map PRIVATE USE_NVML)
+    target_link_libraries(benchmark_native PRIVATE CUDA::nvml)
+    target_compile_definitions(benchmark_native PRIVATE USE_NVML)
 endif()
 
 if(ENABLE_TORCH)
     find_package(Torch REQUIRED)
-    target_compile_definitions(benchmark_map PRIVATE ENABLE_TORCH)
-    target_link_libraries(benchmark_map PRIVATE ${TORCH_LIBRARIES})
+    target_compile_definitions(benchmark_native PRIVATE ENABLE_TORCH)
+    target_link_libraries(benchmark_native PRIVATE ${TORCH_LIBRARIES})
 endif()
 
 if(ENABLE_ONNX)
-    target_include_directories(benchmark_map PRIVATE /opt/onnxruntime/include)
-    target_link_directories(benchmark_map PRIVATE /opt/onnxruntime/lib)
-    target_compile_definitions(benchmark_map PRIVATE ENABLE_ONNX)
-    target_link_libraries(benchmark_map PRIVATE onnxruntime)
+    target_include_directories(benchmark_native PRIVATE /opt/onnxruntime/include)
+    target_link_directories(benchmark_native PRIVATE /opt/onnxruntime/lib)
+    target_compile_definitions(benchmark_native PRIVATE ENABLE_ONNX)
+    target_link_libraries(benchmark_native PRIVATE onnxruntime)
 endif()
 
 if(ENABLE_TRT)
-    target_compile_definitions(benchmark_map PRIVATE ENABLE_TRT)
-    target_link_libraries(benchmark_map PRIVATE nvinfer)
+    target_compile_definitions(benchmark_native PRIVATE ENABLE_TRT)
+    target_link_libraries(benchmark_native PRIVATE nvinfer)
 endif()
+
