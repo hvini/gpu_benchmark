@@ -1,0 +1,2 @@
+gpu,model,resolution,precision,engine,batch_size,map50,map50_95,preprocess_ms,inference_ms,nms_ms,total_latency_ms,fps_e2e,python,torch,cuda,avg_power_W,max_power_W,gpu_util_mean_pct,gpu_util_max_pct,gpu_memory_mean_MB,gpu_memory_max_MB,fps_per_watt
+NVIDIA GeForce RTX 4060 Ti,yolo11s.pt,640,fp32,pytorch,1,0.6282627157933515,0.46071420095313387,0.37445558999972944,3.1368196525999905,0.4741695920002712,3.985444834599991,250.91302012724194,3.10.12,2.11.0+cu128,12.8,77.19298062953996,97.965,41.092009685230025,64,1040.5917070217918,1065.8125,3.2504642012906464
