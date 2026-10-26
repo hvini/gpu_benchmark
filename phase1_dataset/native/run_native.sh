@@ -47,16 +47,19 @@ else
     DOCKER_GPU_ARGS="--gpus all"
 fi
 
-# ── Build Docker image ──────────────────────────────────────────────────────
-echo "Building Phase 1 Native Docker Image..."
-docker build -f ../../Dockerfile.native \
-    --build-arg BASE_IMAGE="$BASE_IMAGE" \
-    --build-arg CUDA_ARCHS="$CUDA_ARCHS" \
-    --build-arg TORCH_ARCHS="$TORCH_ARCHS" \
-    --build-arg ORT_URL="$ORT_URL" \
-    --build-arg NATIVE_SRC_DIR="phase1_dataset/native" \
-    -t yolo-phase1-native \
-    ../..
+if docker image inspect yolo-phase1-native >/dev/null 2>&1; then
+    echo "Docker image 'yolo-phase1-native' already exists. Skipping build."
+else
+    echo "Building Phase 1 Native Docker Image..."
+    docker build -f ../../Dockerfile.native \
+        --build-arg BASE_IMAGE="$BASE_IMAGE" \
+        --build-arg CUDA_ARCHS="$CUDA_ARCHS" \
+        --build-arg TORCH_ARCHS="$TORCH_ARCHS" \
+        --build-arg ORT_URL="$ORT_URL" \
+        --build-arg NATIVE_SRC_DIR="phase1_dataset/native" \
+        -t yolo-phase1-native \
+        ../..
+fi
 
 mkdir -p ../../results/phase1_dataset/native
 
@@ -136,6 +139,7 @@ if os.path.basename(p) != tgt: os.replace(p, tgt)
                 /usr/src/tensorrt/bin/trtexec \
                     --onnx="$ONNX_TEMP" \
                     --saveEngine="$TARGET" \
+                    --timingCacheFile="trt_global.cache" \
                     $TRT_FLAGS
 
             rm -f "$ONNX_TEMP"
@@ -169,4 +173,3 @@ echo "Phase 1 Native Benchmark completed!"
 echo "Results → ../../results/phase1_dataset/native/"
 echo ""
 echo "For mAP scores run: cd ../python && ./run_session.sh $ENGINE $PRECISION"
-
