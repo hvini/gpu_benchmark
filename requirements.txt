@@ -1,10 +1,10 @@
-ultralytics
+ultralytics==8.4.191
 numpy
 pandas
 tqdm
 nvidia-ml-py
 onnx
 onnxruntime-gpu
-tensorrt-cu12
-nvidia-modelopt[onnx]
+tensorrt-cu12==11.4.0.106
+nvidia-modelopt[onnx]==0.47.0
 
