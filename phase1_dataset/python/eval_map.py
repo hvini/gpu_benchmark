@@ -49,7 +49,9 @@ else:
         export_format = "engine" if ENGINE == "tensorrt" else "onnx"
         half = (PRECISION == "fp16")
         int8 = (PRECISION == "int8")
-        data = "coco8.yaml" if int8 else None
+        # INT8 PTQ calibration: first ~1000 train2017 images (deterministic), never val2017 (that is the eval set)
+        data = "coco.yaml" if int8 else None
+        calib = dict(split="train", fraction=0.0085) if int8 else {}
 
         model_name = os.path.splitext(os.path.basename(MODEL))[0]
         target_name = f"../../models/{model_name}_{IMAGE_SIZE}_{PRECISION}.{export_format}"
@@ -69,7 +71,8 @@ else:
                 data=data,
                 dynamic=False,
                 simplify=True if ENGINE=="onnx" else False,
-                nms=False  # <--- CRITICAL FOR TRT 11
+                nms=False,  # <--- CRITICAL FOR TRT 11
+                **calib
             )
             
             if export_path != target_name:
